@@ -1,4 +1,11 @@
-import { FormEvent, Fragment, useCallback, useEffect, useState } from 'react';
+import {
+  FormEvent,
+  Fragment,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import './styles/global.css';
 import './styles/app.css';
 import { api } from './utils/api';
@@ -27,6 +34,94 @@ export function App() {
   const [error, setError] = useState(false);
 
   const [showScroll, setShowScroll] = useState(false);
+
+  const [inputPlaceholder, setInputPlaceholder] = useState('Pesquisar');
+
+  const input = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    input.current?.addEventListener('blur', startCycle);
+    input.current?.addEventListener('focus', stopCycle);
+
+    return () => {
+      input.current?.removeEventListener('blur', startCycle);
+      input.current?.removeEventListener('focus', stopCycle);
+    };
+  }, []);
+
+  let words = ['infernape', 'empoleon', 'xari', 'charizard'];
+  let wordToPrint = '';
+  let letter = 0;
+  let count = 0;
+  let direction = 'forward';
+  let intervalID: NodeJS.Timeout;
+  let timeout: NodeJS.Timeout;
+
+  function cycle() {
+    let word = words[count];
+
+    if (direction == 'forward') {
+      if (letter < word.length) {
+        wordToPrint += word[letter];
+        updatePlaceholder(wordToPrint);
+        letter++;
+      } else {
+        direction = 'backward';
+        clearInterval(intervalID);
+
+        intervalID = setInterval(cycle, 100);
+      }
+    } else {
+      if (wordToPrint.length > 0) {
+        wordToPrint = wordToPrint.slice(0, -1);
+        updatePlaceholder(wordToPrint);
+      } else {
+        startOver();
+      }
+    }
+  }
+
+  function updatePlaceholder(text: string) {
+    setInputPlaceholder(text);
+  }
+
+  function startOver() {
+    resetState();
+
+    if (count < words.length - 1) {
+      count++;
+    } else {
+      count = 0;
+    }
+
+    intervalID = setInterval(cycle, 200);
+  }
+
+  function resetState() {
+    letter = 0;
+    wordToPrint = '';
+    direction = 'forward';
+
+    clearTimeout(timeout);
+    clearInterval(intervalID);
+  }
+
+  function startCycle() {
+    if (pokemonName === '') {
+      resetState();
+
+      updatePlaceholder('Pesquisar');
+
+      timeout = setTimeout(() => {
+        intervalID = setInterval(cycle, 200);
+      }, 3000);
+    }
+  }
+
+  function stopCycle() {
+    resetState();
+    updatePlaceholder('Pesquisar');
+  }
 
   const handleSubmit = useCallback(
     async (event: FormEvent<HTMLFormElement>) => {
@@ -129,9 +224,10 @@ export function App() {
             <div className="form-div-search-input">
               <input
                 type="text"
+                ref={input}
                 required
                 className="form-search-input"
-                placeholder="pequisar pokemons"
+                placeholder={inputPlaceholder}
                 onChange={e => setPokemonName(e.target.value)}
               />
             </div>
